@@ -26,7 +26,7 @@ cd RAGminProject
 pip install -r requirements.txt
 ```
 
-### 2. 配置 API Key（勿提交到 Git）
+### 2. 配置 API Key
 
 **Windows CMD**
 
