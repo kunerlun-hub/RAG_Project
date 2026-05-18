@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 import config_data as config
 from file_history_store import coerce_session_id
+from agent import ProblemSolvingAgent
 from rag import Rag
 
 
@@ -18,6 +19,7 @@ class ChatRequest(BaseModel):
 
 app = FastAPI(title="RAG Web App")
 rag = Rag()
+agent = ProblemSolvingAgent()
 
 
 HTML_PAGE = """
@@ -30,7 +32,11 @@ HTML_PAGE = """
   <style>
     body { font-family: Arial, sans-serif; background: #f6f7fb; margin: 0; }
     .container { max-width: 920px; margin: 24px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 14px rgba(0,0,0,0.08); overflow: hidden; }
-    .header { padding: 16px 20px; border-bottom: 1px solid #ececec; font-size: 20px; font-weight: 700; }
+    .header { padding: 16px 20px; border-bottom: 1px solid #ececec; font-size: 20px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+    .mode-switch { display: flex; gap: 4px; background: #f1f3f6; border-radius: 8px; padding: 3px; }
+    .mode-btn { border: 0; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; background: transparent; color: #666; transition: all 0.2s; }
+    .mode-btn.active { background: #2f66f3; color: #fff; }
+    .status-msg { align-self: center; color: #999; font-size: 12px; padding: 4px 0; }
     .chat { height: 62vh; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
     .msg { max-width: 80%; padding: 10px 12px; border-radius: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
     .user { align-self: flex-end; background: #2f66f3; color: #fff; }
@@ -43,7 +49,13 @@ HTML_PAGE = """
 </head>
 <body>
   <div class="container">
-    <div class="header">智能答题</div>
+    <div class="header">
+      <span>智能答题</span>
+      <div class="mode-switch">
+        <button class="mode-btn active" data-mode="rag" onclick="switchMode('rag', this)">RAG 模式</button>
+        <button class="mode-btn" data-mode="agent" onclick="switchMode('agent', this)">智能体模式</button>
+      </div>
+    </div>
     <div class="chat" id="chat"></div>
     <div class="footer">
       <input id="input" placeholder="请输入你的问题..." />
@@ -56,10 +68,30 @@ HTML_PAGE = """
     const input = document.getElementById("input");
     const send = document.getElementById("send");
 
+    let currentMode = "rag";
     let sessionId = localStorage.getItem("rag_session_id");
     if (!sessionId) {
       sessionId = crypto.randomUUID();
       localStorage.setItem("rag_session_id", sessionId);
+    }
+
+    function switchMode(mode, btn) {
+      currentMode = mode;
+      document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      input.placeholder = mode === "agent"
+        ? "智能体模式: 输入复杂问题, AI将自主使用工具解决..."
+        : "请输入你的问题...";
+      input.focus();
+    }
+
+    function appendStatus(text) {
+      const div = document.createElement("div");
+      div.className = "status-msg";
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
     }
 
     function appendMessage(role, content) {
@@ -82,8 +114,10 @@ HTML_PAGE = """
       appendMessage("user", text);
       const aiBox = appendMessage("assistant", "AI思考中...");
 
+      const endpoint = currentMode === "agent" ? "/api/agent/stream" : "/api/chat/stream";
+
       try {
-        const resp = await fetch("/api/chat/stream", {
+        const resp = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text, session_id: sessionId })
@@ -117,6 +151,9 @@ HTML_PAGE = """
               if (data.type === "token") {
                 answer += data.content;
                 aiBox.textContent = answer;
+                chat.scrollTop = chat.scrollHeight;
+              } else if (data.type === "status") {
+                aiBox.textContent = data.content;
                 chat.scrollTop = chat.scrollHeight;
               } else if (data.type === "error") {
                 aiBox.textContent = data.content;
@@ -178,6 +215,29 @@ def chat_stream(payload: ChatRequest, session_id: str | None = Query(default=Non
             yield "data: [DONE]\n\n"
         except Exception as exc:
             error_msg = f"服务异常: {exc}"
+            yield f"data: {json.dumps({'type': 'error', 'content': error_msg}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/agent/stream")
+def agent_stream(payload: ChatRequest, session_id: str | None = Query(default=None)) -> StreamingResponse:
+    user_message = payload.message.strip()
+    if not user_message:
+        return StreamingResponse(iter(["data: " + json.dumps({"type": "error", "content": "消息不能为空"}) + "\n\n"]),
+                                 media_type="text/event-stream")
+
+    current_session_id = coerce_session_id(
+        (payload.session_id or session_id or str(uuid.uuid4())).strip()
+    )
+
+    def event_stream() -> Iterator[str]:
+        try:
+            for event in agent.chat_stream(user_message, current_session_id):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            error_msg = f"智能体服务异常: {exc}"
             yield f"data: {json.dumps({'type': 'error', 'content': error_msg}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude plugins *)",
+      "Bash(claude plugin *)",
+      "Bash(export CLAUDE_CODE_GIT_BASH_PATH=\"C:/Program Files/Git/bin/bash.exe\")",
+      "Bash(where bash *)",
+      "Read(//c/Program Files/Git/**)",
+      "Bash(export CLAUDE_CODE_GIT_BASH_PATH=\"D:/AllDownloads/Git/Git/usr/bin/bash.exe\")",
+      "Bash(where git-bash *)",
+      "Read(//d/AllDownloads/Git/Git/**)",
+      "Read(//d/AllDownloads/Git/Git/bin/**)",
+      "Bash(export CLAUDE_CODE_GIT_BASH_PATH=\"D:/AllDownloads/Git/Git/git-bash.exe\")",
+      "Bash(CLAUDE_CODE_GIT_BASH_PATH=\"D:\\\\\\\\AllDownloads\\\\\\\\Git\\\\\\\\Git\\\\\\\\git-bash.exe\" claude plugin *)",
+      "Bash(CLAUDE_CODE_GIT_BASH_PATH=\"D:\\\\\\\\AllDownloads\\\\\\\\Git\\\\\\\\Git\\\\\\\\git-bash.exe\" gh repo view anthropics/skills --json description,name)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(CLAUDE_CODE_GIT_BASH_PATH=\"D:\\\\\\\\AllDownloads\\\\\\\\Git\\\\\\\\Git\\\\\\\\git-bash.exe\" claude plugin list)",
+      "Bash(rm -f .claude/skills)",
+      "Bash(mkdir -p .claude/skills)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('agent.py', encoding='utf-8'\\).read\\(\\)\\); print\\('agent.py: OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('web_app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('web_app.py: OK'\\)\")",
+      "Bash(python -c \"from agent import ProblemSolvingAgent; print\\('Import OK'\\)\")",
+      "Bash(python -c \"import langchain; print\\(langchain.__version__\\)\")",
+      "Bash(python -c \"from langchain.agents import agent; print\\(dir\\(agent\\)\\)\")",
+      "Bash(python -c \"from langchain import agents; print\\(type\\(agents\\)\\); print\\([x for x in dir\\(agents\\) if not x.startswith\\('_'\\)]\\)\")",
+      "Bash(python -c \"from langchain.agents import create_agent; help\\(create_agent\\)\")",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
