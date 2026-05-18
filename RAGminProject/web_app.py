@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 import config_data as config
+from file_history_store import coerce_session_id
 from rag import Rag
 
 
@@ -103,7 +104,7 @@ HTML_PAGE = """
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
-          const chunks = buffer.split("\\n\\n");
+          const chunks = buffer.split(String.fromCharCode(10, 10));
           buffer = chunks.pop() || "";
 
           for (const chunk of chunks) {
@@ -160,7 +161,9 @@ def chat_stream(payload: ChatRequest, session_id: str | None = Query(default=Non
         return StreamingResponse(iter(["data: " + json.dumps({"type": "error", "content": "消息不能为空"}) + "\n\n"]),
                                  media_type="text/event-stream")
 
-    current_session_id = payload.session_id or session_id or str(uuid.uuid4())
+    current_session_id = coerce_session_id(
+        (payload.session_id or session_id or str(uuid.uuid4())).strip()
+    )
 
     session_config = {
         "configurable": {

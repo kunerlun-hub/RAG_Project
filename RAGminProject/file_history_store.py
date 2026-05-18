@@ -1,8 +1,28 @@
 import json
 import os
+import re
+import uuid
 from typing import Sequence
+
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
+
+_SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
+
+
+def _safe_session_id(session_id: str) -> str:
+    sid = str(session_id).strip()
+    if not _SESSION_ID_RE.fullmatch(sid):
+        raise ValueError("无效的 session_id，仅允许字母、数字、下划线、连字符，长度 1–128")
+    return sid
+
+
+def coerce_session_id(session_id: str) -> str:
+    """合法 id 原样返回；非法（含路径注入）时回退为新 uuid，避免拒绝服务或目录穿越。"""
+    sid = str(session_id).strip()
+    if _SESSION_ID_RE.fullmatch(sid):
+        return sid
+    return str(uuid.uuid4())
 
 
 def get_history(session_id):
@@ -11,13 +31,11 @@ def get_history(session_id):
 
 class FileChatMessageHistory(BaseChatMessageHistory):
     def __init__(self, session_id, storage_path):
-        self.session_id = session_id        # 会话id
-        self.storage_path = storage_path    # 不同会话id的存储文件，所在的文件夹路径
-        # 完整的文件路径
+        self.session_id = _safe_session_id(session_id)
+        self.storage_path = storage_path
         self.file_path = os.path.join(self.storage_path, self.session_id)
 
-        # 确保文件夹是存在的
-        os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+        os.makedirs(self.storage_path, exist_ok=True)
 
     def add_messages(self, messages: Sequence[BaseMessage]) -> None:
         # Sequence序列 类似list、tuple

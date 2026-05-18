@@ -5,16 +5,19 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough, RunnableWithMessageHistory, RunnableLambda
 
+import os
+
 from file_history_store import get_history
-from vector_store import  VectorStoreService
+from vector_store import VectorStoreService
 import config_data as config
 
 
-def print_prompt(prompt):
-    print("="*20)
-    print(prompt.to_string())
-    print("="*20)
-    return  prompt
+def _maybe_log_prompt(prompt):
+    if os.environ.get("RAG_DEBUG_PROMPTS"):
+        print("=" * 20)
+        print(prompt.to_string())
+        print("=" * 20)
+    return prompt
 class Rag:
     def __init__(self):
         self.vector_service = VectorStoreService(
@@ -37,7 +40,7 @@ class Rag:
             for doc in docs:
                 formatted_str += f"文档片段:{doc.page_content}\n文档元数据:{doc.metadata}\n"
             return formatted_str
-        retriever = self.vector_service.get_retriver()
+        retriever = self.vector_service.get_retriever()
         def format_for_retriever(value: dict)-> str:
             return value["input"]
         def format_for_prompt_template(value):
@@ -48,7 +51,7 @@ class Rag:
             return new_value
         chain = ({"input": RunnablePassthrough(),
                   "context": RunnableLambda(format_for_retriever)|retriever|format_document} |RunnableLambda(format_for_prompt_template)|
-                 self.prompt_template |print_prompt| self.chat_model |StrOutputParser())
+                 self.prompt_template | _maybe_log_prompt | self.chat_model | StrOutputParser())
         conversation_chain = RunnableWithMessageHistory(
             chain,
             get_history,

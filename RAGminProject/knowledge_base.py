@@ -35,9 +35,9 @@ def get_string_md5(input_str: str, encoding: str = 'utf-8'):
 class KnowledgeBaseService(object):
     def __init__(self):
         self.chroma = Chroma(
-            collection_name=config.collection_name, # 数据库表名
-            embedding_function=DashScopeEmbeddings(model = "text-embedding-v4"),
-            persist_directory=config.persist_directory # 数据库本地存储路径
+            collection_name=config.collection_name,
+            embedding_function=DashScopeEmbeddings(model=config.text_model),
+            persist_directory=config.persist_directory,
         )
         self.spliter = RecursiveCharacterTextSplitter(
             chunk_size=config.chunk_size, # 每个分块的大小

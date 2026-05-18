@@ -118,4 +118,4 @@ RAGminProject/
 
 ## 许可证
 
-若你开源到 GitHub，请自行补充许可证文件（如 MIT）；本 README 不包含法律条款。
+

@@ -12,11 +12,11 @@ class VectorStoreService(object):
             embedding_function=self.embedding,
             persist_directory=config.persist_directory
              )
-    def get_retriver(self):
-        return self.vector_store.as_retriever(search_kwargs={"k": config.similarity_threshold})
+    def get_retriever(self):
+        return self.vector_store.as_retriever(search_kwargs={"k": config.similarity_top_k})
 
 # if __name__ == '__main__':
 #     vector_store = VectorStoreService(DashScopeEmbeddings(model = "text-embedding-v4"))
-#     retriver = vector_store.get_retriver()
+#     retriever = vector_store.get_retriever()
 #     res = retriver.invoke("我的体重180斤,尺码推荐")
 #     print(res)
